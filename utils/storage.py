@@ -16,10 +16,7 @@ class Storage:
     schema_version = 2
 
     def __init__(self):
-        self.parameters = {
-            "database": data_path + "/data.db",
-            "isolation_level": None,
-        }
+        self.parameters = {"database": f'{data_path}/data.db', "isolation_level": None}
         self.converter = Converter()
 
     def connect(self):
@@ -28,23 +25,20 @@ class Storage:
         return connection
 
     def row_factory(self, cursor, row):
-        dictionary = {}
-        for index, column in enumerate(cursor.description):
-            dictionary[column[0]] = row[index]
-        return dictionary
+        return {
+            column[0]: row[index]
+            for index, column in enumerate(cursor.description)
+        }
 
     def init(self):
         with closing(self.connect()) as sqlite:
             cursor = sqlite.cursor()
             cursor.execute("SELECT name FROM sqlite_master WHERE type = 'table'")
-            tables = []
-            for row in cursor.fetchall():
-                tables.append(row["name"])
-
+            tables = [row["name"] for row in cursor.fetchall()]
             schema_version = self.schema_version
             if "version" not in tables:
                 cursor.execute("CREATE TABLE version (version INTEGER)")
-                cursor.execute("INSERT INTO version VALUES (%s)" % self.schema_version)
+                cursor.execute(f"INSERT INTO version VALUES ({self.schema_version})")
             else:
                 schema_version = int(cursor.execute("SELECT version FROM version").fetchone()["version"])
 
@@ -127,7 +121,7 @@ class Storage:
         values = []
         for name, value in data.items():
             columns.append(name)
-            placeholders.append(":" + name)
+            placeholders.append(f":{name}")
             values.append(value)
 
         columns = ", ".join(columns)
@@ -136,7 +130,10 @@ class Storage:
 
         with closing(self.connect()) as sqlite:
             cursor = sqlite.cursor()
-            cursor.execute("INSERT INTO measurements (" + columns + ") VALUES (" + placeholders + ")", values)
+            cursor.execute(
+                f"INSERT INTO measurements ({columns}) VALUES ({placeholders})",
+                values,
+            )
 
     def destroy_measurements(self, session):
         with closing(self.connect()) as sqlite:
@@ -162,7 +159,7 @@ class Storage:
             if limit is None or offset is None:
                 cursor.execute(sql, (session,))
             else:
-                cursor.execute(sql + " LIMIT ?, ?", (session, offset, limit))
+                cursor.execute(f'{sql} LIMIT ?, ?', (session, offset, limit))
             items = cursor.fetchall()
 
         for index, item in enumerate(items):
@@ -202,10 +199,7 @@ class Storage:
             cursor = sqlite.cursor()
             cursor.execute("SELECT message FROM logs")
 
-            log = ""
-            for row in cursor.fetchall():
-                log += row["message"]
-
+            log = "".join(row["message"] for row in cursor.fetchall())
         return log
 
     def clear_log(self):
@@ -232,6 +226,6 @@ class Storage:
 
     def backup(self):
         path = self.parameters["database"]
-        backup_path = "%s.backup-%s" % (path, pendulum.now().format("YYYY-MM-DD_HH-mm-ss"))
+        backup_path = f'{path}.backup-{pendulum.now().format("YYYY-MM-DD_HH-mm-ss")}'
         if os.path.exists(path):
             shutil.copy(path, backup_path)

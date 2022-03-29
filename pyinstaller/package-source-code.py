@@ -20,12 +20,12 @@ exclude = [
 ]
 
 for index, pattern in enumerate(exclude):
-    exclude[index] = " -x!" + pattern
+    exclude[index] = f" -x!{pattern}"
 
 exclude = " ".join(exclude)
 
-archive = "dist/rd-usb-source-%s.zip" % version
+archive = f"dist/rd-usb-source-{version}.zip"
 
-subprocess.check_call("7z a -r %s %s ." % (exclude, archive))
+subprocess.check_call(f"7z a -r {exclude} {archive} .")
 
 run_path(version_script, run_name="clean")

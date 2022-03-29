@@ -39,13 +39,10 @@ class TcBleInterface(Interface):
     def scan(self):
         async def run():
             devices = await discover()
-            formatted = []
-            for device in devices:
-                formatted.append({
+            return [{
                     "address": device.address,
                     "name": device.name,
-                })
-            return formatted
+                } for device in devices]
 
         return self.get_loop().run_until_complete(run())
 
@@ -54,7 +51,10 @@ class TcBleInterface(Interface):
 
     async def _connect_run(self, address):
         if not supported:
-            raise NotSupportedException("TC66C over BLE is NOT SUPPORTED, reason: %s" % unsupported_reason)
+            raise NotSupportedException(
+                f"TC66C over BLE is NOT SUPPORTED, reason: {unsupported_reason}"
+            )
+
         self.client = BleakClient(address, loop=self.get_loop())
         self.addresses_index = 0
         await self.client.connect()
@@ -95,12 +95,12 @@ class TcBleInterface(Interface):
     async def _read_run(self):
         self.response.reset()
 
-        for retry in range(0, 3):
+        for _ in range(3):
             address = SERVER_RX_DATA[self.addresses_index]
             try:
                 await self.client.write_gatt_char(address, self.encode_command(ASK_FOR_VALUES_COMMAND), True)
             except BleakError as e:
-                if "Characteristic %s was not found" % address in str(e):
+                if f"Characteristic {address} was not found" in str(e):
                     self.addresses_index += 1
                     if self.addresses_index >= len(SERVER_RX_DATA):
                         raise
@@ -120,8 +120,6 @@ class TcBleInterface(Interface):
                 return self.response.decode()
             except CorruptedResponseException as e:
                 logging.exception(e)
-                continue
-
         if not self.response.is_complete():
             raise NoResponseException
 
@@ -171,7 +169,7 @@ class TcSerialInterface(Interface):
 
             buffer.extend(chunk)
             if len(buffer) >= 8:
-                record = struct.unpack("<2I", buffer[0:8])
+                record = struct.unpack("<2I", buffer[:8])
                 buffer = buffer[8:]
 
                 results.append({
@@ -218,10 +216,7 @@ class Response:
         return self.index >= 192
 
     def decrypt(self):
-        key = []
-        for index, value in enumerate(self.key):
-            key.append(value & 255)
-
+        key = [value & 255 for value in self.key]
         aes = AES.new(bytes(key), AES.MODE_ECB)
         try:
             return aes.decrypt(self.buffer)
@@ -234,11 +229,7 @@ class Response:
 
         data = self.decrypt()
 
-        if self.decode_integer(data, 88) == 1:
-            temperature_multiplier = -1
-        else:
-            temperature_multiplier = 1
-
+        temperature_multiplier = -1 if self.decode_integer(data, 88) == 1 else 1
         return {
             "timestamp": time(),
             "voltage": self.decode_integer(data, 48, 10000),

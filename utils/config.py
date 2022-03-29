@@ -6,12 +6,12 @@ from appdirs import user_data_dir
 
 data_path = user_data_dir("rd-usb", False)
 os.makedirs(data_path, exist_ok=True)
-config_file = data_path + "/config.json"
+config_file = f'{data_path}/config.json'
 
 if getattr(sys, "frozen", False):
-    static_path = sys._MEIPASS + "/static"
+    static_path = f'{sys._MEIPASS}/static'
 else:
-    static_path = os.path.realpath(os.path.dirname(__file__) + "/../static")
+    static_path = os.path.realpath(f'{os.path.dirname(__file__)}/../static')
 
 
 class Config:
@@ -26,9 +26,7 @@ class Config:
                     pass
 
     def read(self, name, fallback=None):
-        if name in self.data:
-            return self.data[name]
-        return fallback
+        return self.data[name] if name in self.data else fallback
 
     def write(self, name, value, flush=True):
         self.data[name] = value

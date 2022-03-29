@@ -92,9 +92,7 @@ class Format:
         return str(data["resistance"]) + " Ω"
 
     def field_name(self, field):
-        if field in self.field_names:
-            return self.field_names[field]
-        return field
+        return self.field_names[field] if field in self.field_names else field
 
     def format_value(self, data, name):
         value = data[name]

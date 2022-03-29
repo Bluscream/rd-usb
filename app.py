@@ -17,10 +17,12 @@ from web import run, parse_cli
 
 debug = "FLASK_DEBUG" in os.environ
 
-settings.update({
-    "log_file": data_path + "/cef.log",
-    "cache_path": user_cache_dir("rd-usb", False),
-})
+settings.update(
+    {
+        "log_file": f'{data_path}/cef.log',
+        "cache_path": user_cache_dir("rd-usb", False),
+    }
+)
 
 
 class Webview:

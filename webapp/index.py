@@ -86,9 +86,7 @@ class Index:
                 string = io.StringIO()
                 writer = csv.writer(string)
 
-                names = []
-                for field in format.export_fields:
-                    names.append(format.field_name(field))
+                names = [format.field_name(field) for field in format.export_fields]
                 writer.writerow(names)
 
                 run_time_offset = None
@@ -163,20 +161,16 @@ class Index:
         steps = set(range(max((first_page, page - related)), min((last_page, page + related)) + 1))
         quotient = (last_page - 1) / blocks
         if len(steps) > 1:
-            for index in range(0, blocks):
+            for index in range(blocks):
                 steps.add(round(quotient * index) + first_page)
         steps.add(last_page)
         steps = sorted(steps)
 
-        pages = []
-        for number in steps:
-            pages.append({
+        return [{
                 "number": number,
                 "link": url_for("index.data", page=number, name=name),
                 "current": number == page,
-            })
-
-        return pages
+            } for number in steps]
 
     def render_graph(self):
         self.init()
@@ -218,13 +212,15 @@ class Index:
 
         data = []
         if session:
-            for item in self.storage.fetch_measurements(session["id"]):
-                if left_axis in item:
-                    data.append({
-                        "date": format.timestamp(item),
-                        "left": item[left_axis],
-                        "right": item[right_axis],
-                    })
+            data.extend(
+                {
+                    "date": format.timestamp(item),
+                    "left": item[left_axis],
+                    "right": item[right_axis],
+                }
+                for item in self.storage.fetch_measurements(session["id"])
+                if left_axis in item
+            )
 
         return jsonify(data)
 
@@ -296,7 +292,7 @@ class Index:
         period = 1
         calculate = False
         if "do" in request.form:
-            if len(messages) == 0:
+            if not messages:
                 session_name = request.form.get("session_name")
                 if not session_name:
                     messages.append("Please provide session name")
@@ -310,10 +306,10 @@ class Index:
 
                 calculate = request.form.get("calculate") is not None
 
-                if len(messages) == 0:
-                    messages.extend(self.do_tc66c_import(session_name, period, calculate))
-                    if len(messages) == 0:
-                        return redirect(url_for("index.graph"))
+            if not messages:
+                messages.extend(self.do_tc66c_import(session_name, period, calculate))
+            if not messages:
+                return redirect(url_for("index.graph"))
 
         return render_template(
             "tc66c-import.html",
@@ -368,9 +364,7 @@ class Index:
                         data["resistance"] = 9999.9
                     else:
                         data["resistance"] = round(record["voltage"] / record["current"] * 10) / 10
-                        if data["resistance"] > 9999.9:
-                            data["resistance"] = 9999.9
-
+                        data["resistance"] = min(data["resistance"], 9999.9)
                     if previous_timestamp is not None:
                         delta = (timestamp - previous_timestamp) / 3600
                         accumulated_current += (data["current"] * 1000) * delta
@@ -396,9 +390,8 @@ class Index:
 
     def url_for(self, endpoint, **values):
         if endpoint == "static":
-            filename = values.get("filename", None)
-            if filename:
-                file_path = static_path + "/" + filename
+            if filename := values.get("filename", None):
+                file_path = f'{static_path}/{filename}'
                 values["v"] = int(os.stat(file_path).st_mtime)
         return url_for(endpoint, **values)
 

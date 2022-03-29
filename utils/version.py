@@ -12,7 +12,7 @@ def detect(fallback="v0"):
             return fallback
 
         if not output.startswith("v"):
-            output = "v" + output
+            output = f"v{output}"
 
         return output
 
@@ -39,7 +39,7 @@ def write(version):
 
 
 compiled_version = None
-version = compiled_version if compiled_version else detect()
+version = compiled_version or detect()
 
 if __name__ == "write":
     write(detect())

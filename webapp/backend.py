@@ -46,12 +46,13 @@ class Backend(Namespace):
             data["ble_address"] = self.config.read("ble_address")
 
         storage = Storage()
-        last = storage.fetch_last_measurement_by_name(data["name"])
-        if last:
+        if last := storage.fetch_last_measurement_by_name(data["name"]):
             if time() - int(last["timestamp"]) > 3600:
-                match = re.match(".+( [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2})$", data["name"])
-                if match:
-                    data["name"] = data["name"][:-len(match.group(1))]
+                if match := re.match(
+                    ".+( [0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2})$",
+                    data["name"],
+                ):
+                    data["name"] = data["name"][:-len(match[1])]
                 data["name"] += " " + pendulum.now().format("YYYY-MM-DD HH:mm")
 
         if not data["name"]:
@@ -118,7 +119,7 @@ class Backend(Namespace):
                         value = getattr(device, property)
                         if value is not None:
                             value = str(value).strip()
-                            content = property + ": " + value
+                            content = f'{property}: {value}'
                             if property == "description":
                                 content = value
                             elif property == "vid":
@@ -128,7 +129,7 @@ class Backend(Namespace):
                             description.append(content)
 
                     name = device.device
-                    if len(description) > 0:
+                    if description:
                         name += " (" + ", ".join(description) + ")"
 
                     result.append("<a href=\"#\" data-address=\"" + device.device + "\">" + name + "</a>")
@@ -302,10 +303,9 @@ class Daemon:
                 logging.exception(sys.exc_info()[0])
                 if timeout <= time() or count <= 0:
                     raise
-                else:
-                    self.log("operation failed, retrying")
-                    self.emit("log", traceback.format_exc())
-                    reconnect = True
+                self.log("operation failed, retrying")
+                self.emit("log", traceback.format_exc())
+                reconnect = True
 
     def emit(self, event, data=None):
         if event == "log":

@@ -108,11 +108,11 @@ def run(args=None, embedded=False):
             def open_in_browser():
                 logging.info("Application is starting...")
 
-                url = "http://127.0.0.1:%s" % port
+                url = f"http://127.0.0.1:{port}"
                 while not url_ok(url):
                     sleep(0.5)
 
-                logging.info("Application is available at " + url)
+                logging.info(f"Application is available at {url}")
 
                 if not app.debug and not daemon:
                     webbrowser.open(url)
