@@ -5,7 +5,7 @@ python-socketio~=5.5.2
 python-engineio~=4.3.1
 appdirs~=1.4.4
 
-bleak~=0.12.1
+bleak~=0.21.1
 pycryptodome~=3.9.0
 
 pywebview~=3.5
